@@ -4,6 +4,7 @@ import co.paralleluniverse.fibers.Fiber;
 import co.paralleluniverse.fibers.Suspendable;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
+import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.eventbus.Message;
@@ -61,11 +62,11 @@ public class Dispatcher
 		});
 	}
 
-	@Suspendable
+	//3 @Suspendable //3
 	public void test1(RoutingContext routingContext)
 	{
 		logger.info("hit /test1");
-		Long tid = Sync.awaitEvent(h -> CloudCarClientUtil.getVertx().setTimer(100, h));
+		//2 Long tid = Sync.awaitEvent(h -> CloudCarClientUtil.getVertx().setTimer(100, h)); //2
 		JsonObject result = new JsonObject();
 		result.put("port", CloudCarClientUtil.getPort());
 		result.put("nodeID", CloudCarClientUtil.getClusterManager().getNodeID());
@@ -85,13 +86,17 @@ public class Dispatcher
 	public void test2(RoutingContext routingContext)
 	{
 		logger.info("hit /test2");
-		EventBus eventBus = CloudCarClientUtil.getVertx().eventBus();
-		logger.info("Verticle runs in: " + Thread.currentThread().getName());
-		logger.info("This request runs in Fiber? " + Fiber.isCurrentFiber());
+		JsonObject test2 = new JsonObject();
+		test2.put("port", CloudCarClientUtil.getPort());
+		test2.put("nodeID", CloudCarClientUtil.getClusterManager().getNodeID());
+		test2.put("deploymentID", verticle.deploymentID());
+		test2.put("thread", Thread.currentThread().getName());
+		test2.put("runningOnFiber", Fiber.isCurrentFiber());
 		if (Fiber.isCurrentFiber())
 		{
-			logger.info("This request runs in Fiber: " + Fiber.currentFiber().getName());
+			test2.put("fiber", Fiber.currentFiber().getName());
 		}
+		EventBus eventBus = CloudCarClientUtil.getVertx().eventBus();
 		eventBus.send("testing:send", "", Sync.fiberHandler(h -> {
 			logger.info("EventBus send handler runs in: " + Thread.currentThread().getName());
 			JsonObject ret = new JsonObject();
@@ -105,8 +110,8 @@ public class Dispatcher
 			{
 				runningOn.put("fiber", Fiber.currentFiber().getName());
 			}
-//			Sync.awaitEvent(this::job);
-			ret.put("runningOn", runningOn);
+			ret.put("test2RunningOn", test2);
+			ret.put("handlerRunningOn", runningOn);
 			JsonObject result = (JsonObject)h.result().body();
 			ret.put("consumerRunningOn", result);
 			routingContext
@@ -119,39 +124,37 @@ public class Dispatcher
 	@Suspendable
 	public void test2a(RoutingContext routingContext)
 	{
-		logger.info("hit /test2");
-		EventBus eventBus = CloudCarClientUtil.getVertx().eventBus();
-		logger.info("Verticle runs in: " + Thread.currentThread().getName());
-		logger.info("This request runs in Fiber? " + Fiber.isCurrentFiber());
+		logger.info("hit /test2a");
+		JsonObject test2a = new JsonObject();
+		test2a.put("port", CloudCarClientUtil.getPort());
+		test2a.put("nodeID", CloudCarClientUtil.getClusterManager().getNodeID());
+		test2a.put("deploymentID", verticle.deploymentID());
+		test2a.put("thread", Thread.currentThread().getName());
+		test2a.put("runningOnFiber", Fiber.isCurrentFiber());
 		if (Fiber.isCurrentFiber())
 		{
-			logger.info("This request runs in Fiber: " + Fiber.currentFiber().getName());
+			test2a.put("fiber", Fiber.currentFiber().getName());
 		}
-		Message<JsonObject> eventbusresult = Sync.awaitResult(h -> eventBus.send("testing:send", "", h)); //Sync.fiberHandler(h -> {
-			logger.info("EventBus send handler runs in: " + Thread.currentThread().getName());
-			JsonObject ret = new JsonObject();
-			JsonObject runningOn = new JsonObject();
-			runningOn.put("port", CloudCarClientUtil.getPort());
-			runningOn.put("nodeID", CloudCarClientUtil.getClusterManager().getNodeID());
-			runningOn.put("deploymentID", verticle.deploymentID());
-			runningOn.put("thread", Thread.currentThread().getName());
-			runningOn.put("runningOnFiber", Fiber.isCurrentFiber());
-			if (Fiber.isCurrentFiber())
-			{
-				runningOn.put("fiber", Fiber.currentFiber().getName());
-			}
-//			Sync.awaitEvent(this::job);
-		FutureList<JsonObject> futureList = new FutureList<>();
-			futureList.add(() -> job());
-			futureList.awaitComplete();
-			ret.put("runningOn", runningOn);
-//			JsonObject result = (JsonObject)h.result().body();
-			ret.put("consumerRunningOn", eventbusresult.body());
-			routingContext
-					.response()
-					.putHeader("content-type", "application/json; charset=utf-8")
-					.end(ret.encodePrettily());
-//		}));
+		EventBus eventBus = CloudCarClientUtil.getVertx().eventBus();
+		Message<JsonObject> eventBusResult = Sync.awaitResult(h -> eventBus.send("testing:send", "", h));
+		JsonObject ret = new JsonObject();
+		JsonObject runningOn = new JsonObject();
+		runningOn.put("port", CloudCarClientUtil.getPort());
+		runningOn.put("nodeID", CloudCarClientUtil.getClusterManager().getNodeID());
+		runningOn.put("deploymentID", verticle.deploymentID());
+		runningOn.put("thread", Thread.currentThread().getName());
+		runningOn.put("runningOnFiber", Fiber.isCurrentFiber());
+		if (Fiber.isCurrentFiber())
+		{
+			runningOn.put("fiber", Fiber.currentFiber().getName());
+		}
+		ret.put("test2aRunningOn", test2a);
+		ret.put("handlerRunningOn", runningOn);
+		ret.put("consumerRunningOn", eventBusResult.body());
+		routingContext
+				.response()
+				.putHeader("content-type", "application/json; charset=utf-8")
+				.end(ret.encodePrettily());
 	}
 
 	@Suspendable
@@ -169,6 +172,18 @@ public class Dispatcher
 				.response()
 				.putHeader("content-type", "application/json; charset=utf-8")
 				.end(runningOn.encodePrettily());
+	}
+
+	@Suspendable
+	private Long handlerJob(Handler<Long> handler)
+	{
+		logger.info("Running in Fiber? " + Fiber.isCurrentFiber());
+		if (Fiber.isCurrentFiber())
+		{
+			logger.info("Running in Fiber: " + Fiber.currentFiber().getName());
+		}
+		handler.handle(null);
+		return 0L;
 	}
 
 	@Suspendable
