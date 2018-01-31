@@ -1,0 +1,41 @@
+plugins {
+    id 'java'
+    id 'application'
+    id 'com.github.johnrengelman.shadow' version '2.0.1'
+}
+
+ext {
+    vertxVersion = '3.5.0'
+}
+
+group 'com.cloudcar.college'
+version = '1.0.0'
+sourceCompatibility = '1.8'
+
+configurations {
+    quasar
+}
+
+repositories {
+    mavenLocal()
+    jcenter()
+    maven { url "https://plugins.gradle.org/m2/" }
+}
+
+dependencies {
+    compile 'co.paralleluniverse:quasar-core:0.7.5:jdk8'
+    quasar 'co.paralleluniverse:quasar-core:0.7.5:jdk8'
+    compile "io.vertx:vertx-core:$vertxVersion"
+    compile "io.vertx:vertx-hazelcast:$vertxVersion"
+    compile "io.vertx:vertx-web:$vertxVersion"
+    compile "io.vertx:vertx-sync:$vertxVersion"
+    compile 'org.slf4j:slf4j-api:1.7.25'
+    compile 'org.slf4j:slf4j-log4j12:1.7.25'
+}
+
+run {
+    mainClassName = 'com.cloudcar.college.fiber.Launcher'
+    systemProperties['port'] = "${port}"
+    jvmArgs "-javaagent:${configurations.quasar.iterator().next()}"
+    jvmArgs "-Dco.paralleluniverse.fibers.verifyInstrumentation"
+}
