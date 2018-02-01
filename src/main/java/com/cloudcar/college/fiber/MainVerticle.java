@@ -39,6 +39,7 @@ public class MainVerticle extends SyncVerticle
 		});
 
 		eventBus.consumer("testing:publish", h -> {
+			h.reply("");
 		//	logger.info("[testing:publish] nodeID: {}, deploymentID: {}, thread: {}", CloudCarClientUtil.getClusterManager().getNodeID(), deploymentID(), Thread.currentThread().getName());
 		});
 
