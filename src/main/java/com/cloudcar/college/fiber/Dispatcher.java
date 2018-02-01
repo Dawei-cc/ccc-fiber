@@ -25,6 +25,8 @@ public class Dispatcher
 	private final static Logger logger = LoggerFactory.getLogger(Dispatcher.class);
 	private MainVerticle verticle;
 
+	private static ThreadLocal<String> local = new InheritableThreadLocal<>();
+
 	public Dispatcher(MainVerticle mainVerticle)
 	{
 		this.verticle = mainVerticle;
@@ -164,6 +166,8 @@ public class Dispatcher
 	{
 		logger.info("hit /test3");
 
+		//4 local.set("Testing ThreadLocal: test3"); //4
+
 		List<Future<JsonObject>> futures = new ArrayList<>();
 
 		for(int i =0; i < 10; i++) {
@@ -212,6 +216,8 @@ public class Dispatcher
 	public void test3a(RoutingContext routingContext)
 	{
 		logger.info("hit /test3a");
+
+		//4 local.set("Testing ThreadLocal: test3a"); //4
 
 		FutureList<JsonObject> futureList = new FutureList<>();
 		for (int i = 0; i < 10; i++)
@@ -277,6 +283,7 @@ public class Dispatcher
 		res.put("nodeID", CloudCarClientUtil.getClusterManager().getNodeID());
 		res.put("deploymentID", verticle.deploymentID());
 		res.put("thread", Thread.currentThread().getName());
+		//4 res.put("threadLocal", local.get()); //4
 		res.put("runningOnFiber", Fiber.isCurrentFiber());
 		if (Fiber.isCurrentFiber())
 		{
