@@ -28,6 +28,7 @@ dependencies {
     compile "io.vertx:vertx-core:$vertxVersion"
     compile "io.vertx:vertx-hazelcast:$vertxVersion"
     compile "io.vertx:vertx-web:$vertxVersion"
+    compile "io.vertx:vertx-web-client:$vertxVersion"
     compile "io.vertx:vertx-sync:$vertxVersion"
     compile 'org.slf4j:slf4j-api:1.7.25'
     compile 'org.slf4j:slf4j-log4j12:1.7.25'

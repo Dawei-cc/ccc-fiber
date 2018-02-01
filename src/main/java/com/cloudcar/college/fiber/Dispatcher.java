@@ -2,16 +2,18 @@ package com.cloudcar.college.fiber;
 
 import co.paralleluniverse.fibers.Fiber;
 import co.paralleluniverse.fibers.Suspendable;
-import io.vertx.core.CompositeFuture;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
-import io.vertx.core.Vertx;
+import io.vertx.core.*;
+import io.vertx.core.buffer.Buffer;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.eventbus.Message;
+import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.sync.Sync;
 import io.vertx.ext.web.RoutingContext;
+import io.vertx.ext.web.client.HttpRequest;
+import io.vertx.ext.web.client.HttpResponse;
+import io.vertx.ext.web.client.WebClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -161,17 +163,81 @@ public class Dispatcher
 	public void test3(RoutingContext routingContext)
 	{
 		logger.info("hit /test3");
-		EventBus eventBus = CloudCarClientUtil.getVertx().eventBus();
-		eventBus.publish("testing:publish", "");
+
+		List<Future<JsonObject>> futures = new ArrayList<>();
+
+		for(int i =0; i < 10; i++) {
+			Future<JsonObject> future = Future.future();
+			Vertx.currentContext().owner().eventBus().send("testing:publish", "", CCFiberUtil.ccFiberHandler(ar -> {
+						if (ar.succeeded()) {
+							JsonObject res = request();
+							future.complete(res);
+						} else {
+							future.fail(ar.cause());
+						}
+					}));
+			futures.add(future);
+		}
+
+		JsonArray requests = new JsonArray();
+		for (Future<JsonObject> future : futures) {
+			Sync.awaitResult(future::setHandler, 5000);
+			if (future.succeeded())
+			{
+				requests.add(future.result());
+			}
+		}
+
 		JsonObject runningOn = new JsonObject();
 		runningOn.put("port", CloudCarClientUtil.getPort());
 		runningOn.put("nodeID", CloudCarClientUtil.getClusterManager().getNodeID());
 		runningOn.put("deploymentID", verticle.deploymentID());
 		runningOn.put("thread", Thread.currentThread().getName());
+		runningOn.put("runningOnFiber", Fiber.isCurrentFiber());
+		if (Fiber.isCurrentFiber())
+		{
+			runningOn.put("fiber", Fiber.currentFiber().getName());
+		}
+
+		JsonObject ret = new JsonObject();
+		ret.put("test3RunningOn", runningOn);
+		ret.put("requestsRunningOn", requests);
 		routingContext
 				.response()
 				.putHeader("content-type", "application/json; charset=utf-8")
-				.end(runningOn.encodePrettily());
+				.end(ret.encodePrettily());
+	}
+
+	@Suspendable
+	public void test3a(RoutingContext routingContext)
+	{
+		logger.info("hit /test3a");
+
+		FutureList<JsonObject> futureList = new FutureList<>();
+		for (int i = 0; i < 10; i++)
+		{
+			futureList.add(() -> request());
+		}
+		futureList.awaitComplete();
+
+		JsonObject ret = new JsonObject();
+		JsonObject runningOn = new JsonObject();
+		runningOn.put("port", CloudCarClientUtil.getPort());
+		runningOn.put("nodeID", CloudCarClientUtil.getClusterManager().getNodeID());
+		runningOn.put("deploymentID", verticle.deploymentID());
+		runningOn.put("thread", Thread.currentThread().getName());
+		runningOn.put("runningOnFiber", Fiber.isCurrentFiber());
+		if (Fiber.isCurrentFiber())
+		{
+			runningOn.put("fiber", Fiber.currentFiber().getName());
+		}
+		ret.put("test3aRunningOn", runningOn);
+		JsonArray requests = new JsonArray(futureList.getResults());
+		ret.put("requestsRunningOn", requests);
+		routingContext
+				.response()
+				.putHeader("content-type", "application/json; charset=utf-8")
+				.end(ret.encodePrettily());
 	}
 
 	@Suspendable
@@ -197,5 +263,25 @@ public class Dispatcher
 		Vertx vertx = CloudCarClientUtil.getVertx();
 		Long tid = Sync.awaitEvent(h -> vertx.setTimer(100, h));
 		return new JsonObject();
+	}
+
+	@Suspendable
+	private JsonObject request()
+	{
+		String url = "https://www.google.com";
+		WebClient webClient = WebClient.create(CloudCarClientUtil.getVertx());
+		HttpRequest<Buffer> request = webClient.requestAbs(HttpMethod.GET, url);
+		AsyncResult<HttpResponse<Buffer>> ar = Sync.awaitEvent(request::send, 5000);
+		JsonObject res = new JsonObject();
+		res.put("port", CloudCarClientUtil.getPort());
+		res.put("nodeID", CloudCarClientUtil.getClusterManager().getNodeID());
+		res.put("deploymentID", verticle.deploymentID());
+		res.put("thread", Thread.currentThread().getName());
+		res.put("runningOnFiber", Fiber.isCurrentFiber());
+		if (Fiber.isCurrentFiber())
+		{
+			res.put("fiber", Fiber.currentFiber().getName());
+		}
+		return res;
 	}
 }

@@ -39,7 +39,7 @@ public class MainVerticle extends SyncVerticle
 		});
 
 		eventBus.consumer("testing:publish", h -> {
-			logger.info("[testing:publish] nodeID: {}, deploymentID: {}, thread: {}", CloudCarClientUtil.getClusterManager().getNodeID(), deploymentID(), Thread.currentThread().getName());
+		//	logger.info("[testing:publish] nodeID: {}, deploymentID: {}, thread: {}", CloudCarClientUtil.getClusterManager().getNodeID(), deploymentID(), Thread.currentThread().getName());
 		});
 
 		CloudCarClientUtil.putDeployment("MainVerticle:" + deploymentID(), Thread.currentThread().getName());
@@ -54,6 +54,7 @@ public class MainVerticle extends SyncVerticle
 		router.route(HttpMethod.GET, "/test1a").handler(dispatcher::test1);
 		router.route(HttpMethod.GET, "/test2").handler(Sync.fiberHandler(dispatcher::test2));
 		router.route(HttpMethod.GET, "/test2a").handler(Sync.fiberHandler(dispatcher::test2a));
-		router.route(HttpMethod.GET, "/test3").handler(dispatcher::test3);
+		router.route(HttpMethod.GET, "/test3").handler(Sync.fiberHandler(dispatcher::test3));
+		router.route(HttpMethod.GET, "/test3a").handler(Sync.fiberHandler(dispatcher::test3a));
 	}
 }
