@@ -4,6 +4,7 @@ import co.paralleluniverse.fibers.Suspendable;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.HttpServer;
+import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.sync.Sync;
 import io.vertx.ext.sync.SyncVerticle;
@@ -39,6 +40,7 @@ public class MainVerticle extends SyncVerticle
 		});
 
 		eventBus.consumer("testing:publish", h -> {
+			h.reply(new JsonObject().put("success", true));
 		//	logger.info("[testing:publish] nodeID: {}, deploymentID: {}, thread: {}", CloudCarClientUtil.getClusterManager().getNodeID(), deploymentID(), Thread.currentThread().getName());
 		});
 
