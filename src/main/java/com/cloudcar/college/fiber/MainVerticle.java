@@ -30,19 +30,19 @@ public class MainVerticle extends SyncVerticle
 		server.requestHandler(router::accept).listen(CloudCarClientUtil.getPort());
 
 		EventBus eventBus = vertx.eventBus();
-		eventBus.consumer("testing:send", h -> {
+		eventBus.consumer("testing:send", Sync.fiberHandler(h -> {
 			JsonObject result = new JsonObject();
 			result.put("port", CloudCarClientUtil.getPort());
 			result.put("nodeID", CloudCarClientUtil.getClusterManager().getNodeID());
 			result.put("deploymentID", deploymentID());
 			result.put("thread", Thread.currentThread().getName());
 			h.reply(result);
-		});
+		}));
 
-		eventBus.consumer("testing:publish", h -> {
+		eventBus.consumer("testing:publish", Sync.fiberHandler(h -> {
 			h.reply(new JsonObject().put("success", true));
 		//	logger.info("[testing:publish] nodeID: {}, deploymentID: {}, thread: {}", CloudCarClientUtil.getClusterManager().getNodeID(), deploymentID(), Thread.currentThread().getName());
-		});
+		}));
 
 		CloudCarClientUtil.putDeployment("MainVerticle:" + deploymentID(), Thread.currentThread().getName());
 		logger.info("Deploying MainVerticle ends in: " + Thread.currentThread().getName());

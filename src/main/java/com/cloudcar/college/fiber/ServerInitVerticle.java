@@ -5,6 +5,7 @@ import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.spi.cluster.ClusterManager;
+import io.vertx.ext.sync.Sync;
 import io.vertx.ext.sync.SyncVerticle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,9 +25,9 @@ public class ServerInitVerticle extends SyncVerticle
 		Vertx vertx = CloudCarClientUtil.getVertx();
 		EventBus eventBus = vertx.eventBus();
 		ClusterManager clusterManager = CloudCarClientUtil.getClusterManager();
-		eventBus.consumer("about:" + clusterManager.getNodeID(),  message -> {
+		eventBus.consumer("about:" + clusterManager.getNodeID(), Sync.fiberHandler( message -> {
 			message.reply(getAboutData());
-		});
+		}));
 
 		CloudCarClientUtil.putDeployment("ServerInitVerticle:" + deploymentID(), Thread.currentThread().getName());
 		logger.info("Deploying ServerInitVerticle ends");
