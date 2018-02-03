@@ -37,33 +37,33 @@ public class Dispatcher
 	{
 		JsonObject result = new JsonObject();
 		List<String> nodes = CloudCarClientUtil.getClusterManager().getNodes();
-		EventBus eventBus = CloudCarClientUtil.getVertx().eventBus();
-		List<Future> futures = new ArrayList<>();
+
+		FutureList<JsonObject> futureList = new FutureList<>();
 		for (String node : nodes)
 		{
-			Future<JsonObject> future = Future.future();
-			futures.add(future);
-			eventBus.send("about:"+node, "", h -> {
-				JsonObject message = (JsonObject)h.result().body();
-				future.complete(message);
-			});
+			futureList.add(() -> getAbout(node));
 		}
-		CompositeFuture.join(futures).setHandler(h -> {
-			if (h.succeeded())
-			{
-				JsonArray cluster = new JsonArray();
-				for (int i=0;i<h.result().size();i++)
-				{
-					JsonObject r = h.result().resultAt(i);
-					cluster.add(r);
-				}
-				result.put("cluster", cluster);
-				routingContext
-						.response()
-						.putHeader("content-type", "application/json; charset=utf-8")
-						.end(result.encodePrettily());
-			}
-		});
+		List<JsonObject> results = futureList.awaitComplete();
+
+		JsonArray cluster = new JsonArray();
+		for (JsonObject jo : results)
+		{
+			cluster.add(jo);
+		}
+		result.put("cluster", cluster);
+
+		routingContext
+				.response()
+				.putHeader("content-type", "application/json; charset=utf-8")
+				.end(result.encodePrettily());
+	}
+
+	@Suspendable
+	private JsonObject getAbout(String node)
+	{
+		String address = "about:" + node;
+		Message<JsonObject> result = Sync.awaitResult(h -> CloudCarClientUtil.getVertx().eventBus().send(address, "", h));
+		return result.body();
 	}
 
 	//3 @Suspendable //3
@@ -244,31 +244,6 @@ public class Dispatcher
 				.response()
 				.putHeader("content-type", "application/json; charset=utf-8")
 				.end(ret.encodePrettily());
-	}
-
-	@Suspendable
-	private Long handlerJob(Handler<Long> handler)
-	{
-		logger.info("Running in Fiber? " + Fiber.isCurrentFiber());
-		if (Fiber.isCurrentFiber())
-		{
-			logger.info("Running in Fiber: " + Fiber.currentFiber().getName());
-		}
-		handler.handle(null);
-		return 0L;
-	}
-
-	@Suspendable
-	private JsonObject job()
-	{
-		logger.info("Running in Fiber? " + Fiber.isCurrentFiber());
-		if (Fiber.isCurrentFiber())
-		{
-			logger.info("Running in Fiber: " + Fiber.currentFiber().getName());
-		}
-		Vertx vertx = CloudCarClientUtil.getVertx();
-		Long tid = Sync.awaitEvent(h -> vertx.setTimer(100, h));
-		return new JsonObject();
 	}
 
 	@Suspendable
